@@ -7,12 +7,12 @@ interface MobileHeaderProps {
 }
 
 export const MobileHeader: React.FC<MobileHeaderProps> = ({ title, setMenuMobileOpen }) => (
-  <div className="lg:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-30 print:hidden">
+  <div className="lg:hidden bg-black border-b border-slate-800 p-4 flex items-center justify-between sticky top-0 z-30 print:hidden">
     <div className="flex items-center gap-3">
-      <div className="bg-indigo-500 p-1.5 rounded-lg text-white"><Dumbbell size={18} /></div>
-      <h1 className="font-bold text-slate-800 truncate">{title}</h1>
+      <img src="/power.png" alt="Logo" className="w-8 h-8 object-contain" />
+      <h1 className="font-bold text-white truncate uppercase tracking-tighter italic">{title}</h1>
     </div>
-    <button onClick={() => setMenuMobileOpen(true)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+    <button onClick={() => setMenuMobileOpen(true)} className="p-2 text-slate-300 hover:bg-slate-800 rounded-lg">
       <Menu size={24} />
     </button>
   </div>

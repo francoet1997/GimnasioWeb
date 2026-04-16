@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, FileText, Settings, Dumbbell, X } from 'lucide-react';
-import { View } from '../types';
+import type { View } from '../types';
 
 interface SidebarProps {
   view: View;
@@ -14,37 +14,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ view, setView, menuMobileOpen,
     {/* Overlay para móvil */}
     {menuMobileOpen && (
       <div 
-        className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden backdrop-blur-sm"
+        className="fixed inset-0 bg-black/70 z-40 lg:hidden backdrop-blur-sm"
         onClick={() => setMenuMobileOpen(false)}
       />
     )}
     
-    <aside className={`w-64 bg-slate-900 text-white min-h-screen fixed left-0 top-0 flex flex-col p-6 z-50 transition-transform duration-300 lg:translate-x-0 ${menuMobileOpen ? 'translate-x-0' : '-translate-x-full'} print:hidden`}>
-      <div className="flex items-center justify-between mb-10">
-        <div className="flex items-center gap-3">
-          <div className="bg-indigo-500 p-2 rounded-lg"><Dumbbell size={24} /></div>
-          <h1 className="text-xl font-bold tracking-tight">Gimnasio<span className="text-indigo-400">Web</span></h1>
+    <aside className={`w-64 sidebar-gradient text-white min-h-screen fixed left-0 top-0 flex flex-col p-6 z-50 transition-transform duration-300 lg:translate-x-0 ${menuMobileOpen ? 'translate-x-0' : '-translate-x-full'} print:hidden shadow-2xl`}>
+      <div className="flex flex-col items-center mb-10">
+        <div className="flex items-center justify-between w-full mb-6 lg:hidden">
+          <h1 className="text-xl font-bold tracking-tight">Power <span className="text-orange-400">Rutinas</span></h1>
+          <button onClick={() => setMenuMobileOpen(false)} className="text-slate-400">
+            <X size={24} />
+          </button>
         </div>
-        <button onClick={() => setMenuMobileOpen(false)} className="lg:hidden text-slate-400">
-          <X size={24} />
-        </button>
+        <img src="/power.png" alt="Power Logo" className="w-32 h-32 object-contain mb-4 hidden lg:block drop-shadow-[0_0_15px_rgba(234,88,12,0.3)]" />
+        <h1 className="text-2xl font-black tracking-tighter text-center hidden lg:block uppercase italic leading-tight">Power <span className="text-orange-500 block">Rutinas</span></h1>
       </div>
       <nav className="flex-1 space-y-2">
         <button 
           onClick={() => setView('list')} 
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${view === 'list' || view === 'cliente' || view === 'editor' ? 'bg-indigo-600' : 'text-slate-400 hover:bg-slate-800'}`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold uppercase italic text-sm ${view === 'list' || view === 'cliente' || view === 'editor' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-slate-400 hover:bg-white/5'}`}
         >
           <User size={20} /> Clientes
         </button>
         <button 
           onClick={() => setView('plantillas')} 
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${view === 'plantillas' || view === 'plantillaEditor' ? 'bg-indigo-600' : 'text-slate-400 hover:bg-slate-800'}`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold uppercase italic text-sm ${view === 'plantillas' || view === 'plantillaEditor' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-slate-400 hover:bg-white/5'}`}
         >
           <FileText size={20} /> Stock Rutinas
         </button>
         <button 
           onClick={() => setView('config')} 
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition ${view === 'config' ? 'bg-indigo-600' : 'text-slate-400 hover:bg-slate-800'}`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold uppercase italic text-sm ${view === 'config' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-slate-400 hover:bg-white/5'}`}
         >
           <Settings size={20} /> Ejercicios
         </button>

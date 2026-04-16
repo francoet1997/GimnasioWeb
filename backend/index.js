@@ -33,31 +33,43 @@ const transporter = nodemailer.createTransport({
 function initDb() {
   db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, genero TEXT, email TEXT, notas TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS ejercicios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, grupo_muscular TEXT NOT NULL)`);
+    db.run(`CREATE TABLE IF NOT EXISTS ejercicios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, grupo_muscular TEXT NOT NULL, UNIQUE(nombre, grupo_muscular))`);
     db.run(`CREATE TABLE IF NOT EXISTS rutinas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre_rutina TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP)`);
     db.run(`CREATE TABLE IF NOT EXISTS ejercicios_rutina (id INTEGER PRIMARY KEY AUTOINCREMENT, rutina_id INTEGER, ejercicio_id INTEGER, dia INTEGER, orden INTEGER, series TEXT, repeticiones TEXT, peso TEXT, notas TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS plantillas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, genero TEXT, dias INTEGER)`);
+    db.run(`CREATE TABLE IF NOT EXISTS plantillas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, genero TEXT, dias INTEGER, UNIQUE(nombre, genero, dias))`);
     db.run(`CREATE TABLE IF NOT EXISTS ejercicios_plantilla (id INTEGER PRIMARY KEY AUTOINCREMENT, plantilla_id INTEGER, ejercicio_id INTEGER, dia INTEGER, orden INTEGER, series TEXT, repeticiones TEXT)`);
 
     db.all(`PRAGMA table_info(clientes)`, (err, rows) => {
       if (rows && !rows.some(r => r.name === 'email')) db.run(`ALTER TABLE clientes ADD COLUMN email TEXT`);
     });
 
-    db.get("SELECT COUNT(*) as count FROM ejercicios", (err, row) => {
-      if (row && row.count === 0) {
-        const stmt = db.prepare("INSERT INTO ejercicios (nombre, grupo_muscular) VALUES (?, ?)");
-        ejerciciosMaestros.forEach(x => stmt.run(x));
-        stmt.finalize();
-        plantillasMaestras.forEach(p => db.run("INSERT INTO plantillas (nombre, genero, dias) VALUES (?, ?, ?)", p));
-      }
+    // Sincronizar ejercicios maestros
+    const stmtEj = db.prepare("INSERT OR IGNORE INTO ejercicios (nombre, grupo_muscular) VALUES (?, ?)");
+    ejerciciosMaestros.forEach(x => stmtEj.run(x));
+    stmtEj.finalize();
+
+    // Sincronizar plantillas maestras
+    plantillasMaestras.forEach(p => {
+      db.run("INSERT OR IGNORE INTO plantillas (nombre, genero, dias) VALUES (?, ?, ?)", p);
     });
+    
+    console.log('Sincronización de maestros completada.');
   });
 }
 
-app.get('/api/clientes', (req, res) => db.all("SELECT * FROM clientes ORDER BY nombre", (err, rows) => res.json(rows || [])));
+app.get('/api/clientes', (req, res) => {
+  db.all("SELECT * FROM clientes ORDER BY nombre", (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows || []);
+  });
+});
+
 app.post('/api/clientes', (req, res) => {
   const { nombre, genero, email, notas } = req.body;
-  db.run("INSERT INTO clientes (nombre, genero, email, notas) VALUES (?, ?, ?, ?)", [nombre, genero, email, notas], function() { res.json({ id: this.lastID }); });
+  db.run("INSERT INTO clientes (nombre, genero, email, notas) VALUES (?, ?, ?, ?)", [nombre, genero, email, notas], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ id: this.lastID });
+  });
 });
 app.delete('/api/clientes/:id', (req, res) => db.run("DELETE FROM clientes WHERE id = ?", [req.params.id], () => res.json({ success: true })));
 app.get('/api/ejercicios', (req, res) => db.all("SELECT * FROM ejercicios ORDER BY grupo_muscular, nombre", (err, rows) => res.json(rows || [])));

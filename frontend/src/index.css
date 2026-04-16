@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(0, 0, 0, 0.87);
-  background-color: #f3f4f6; /* Gray 100 */
+  color-scheme: dark;
+  color: #f8fafc;
+  background-color: #121212;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,10 +21,72 @@ body {
   place-items: flex-start;
   min-width: 320px;
   min-height: 100vh;
+  background: #121212;
+  background-attachment: fixed;
+}
+
+/* Custom Power Theme Utilities */
+.power-gradient {
+  background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+}
+
+.power-card {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-gradient {
+  background: #000000;
 }
 
 @media print {
+  /* 1. Reset general para impresión */
+  :root {
+    color-scheme: light !important;
+  }
+
   body {
-    background-color: white;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* 2. Forzar que TODO el texto sea negro */
+  * {
+    color: black !important;
+    -webkit-print-color-adjust: economy !important;
+    print-color-adjust: economy !important;
+  }
+
+  /* 3. Arreglar las filas de los ejercicios */
+  /* Como usas .power-card o fondos oscuros, en papel deben ser claros o transparentes */
+  .power-card, 
+  [class*="bg-"], 
+  div[style*="background-color"] {
+    background-color: transparent !important;
+    border-bottom: 1px solid #ddd !important; /* Añadimos una línea sutil para separar */
+    backdrop-filter: none !important;
+  }
+
+  /* 4. Asegurar que los textos específicos se vean */
+  h1, h2, h3, h4, span, p, div {
+    color: black !important;
+  }
+
+  /* 5. Ocultar lo que no sirve en papel */
+  /* Agregá acá las clases de los botones "AÑADIR", el header con "STOCK", "MAIL", etc. */
+  button, 
+  .btn, 
+  nav, 
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  /* 6. Optimizar el layout para la hoja */
+  #center {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
   }
 }
