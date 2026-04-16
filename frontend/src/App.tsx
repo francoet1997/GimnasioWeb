@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Search, Plus, User, Dumbbell, ArrowLeft, Save, Trash2, Printer, FileText, Mail } from 'lucide-react';
+import { Search, Plus, User, ArrowLeft, Save, Trash2, Printer, FileText, Mail, Download } from 'lucide-react';
 import type { Cliente, Ejercicio, Rutina, Plantilla, EjercicioRutina, View } from './types';
 import { Sidebar } from './components/Sidebar';
 import { MobileHeader } from './components/MobileHeader';
+import html2pdf from 'html2pdf.js';
 
 const API_URL = `http://${window.location.hostname}:3001/api`;
 
@@ -22,6 +23,8 @@ function App() {
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [busqueda, setBusqueda] = useState('');
   
+  const routineRef = useRef<HTMLDivElement>(null);
+
   // Modales
   const [mostrarModalCliente, setMostrarModalCliente] = useState(false);
   const [mostrarModalPlantillas, setMostrarModalPlantillas] = useState(false);
@@ -146,6 +149,25 @@ function App() {
     } catch (e) {
       alert('Error al enviar mail. Revisa las credenciales en el backend.');
     }
+  };
+
+  const handleDownloadPDF = () => {
+    if (!routineRef.current) return;
+    
+    const element = routineRef.current;
+    const opt = {
+      margin:       10,
+      filename:     `Rutina_${selectedCliente?.nombre || 'Alumno'}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { 
+        scale: 2, 
+        useCORS: true,
+        backgroundColor: '#0f172a'
+      },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save();
   };
 
   // --- HANDLERS EJERCICIOS ---
@@ -371,12 +393,14 @@ function App() {
             <div className="flex flex-wrap gap-3 w-full xl:w-auto">
               <button onClick={() => setMostrarModalPlantillas(true)} className="flex-1 xl:flex-none bg-slate-800 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 text-xs md:text-sm uppercase italic tracking-widest hover:bg-black transition-all shadow-lg"><FileText size={20} /> STOCK</button>
               <button onClick={() => window.print()} className="flex-1 xl:flex-none bg-slate-800 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 border-2 border-slate-700 hover:bg-white hover:text-black transition-all text-xs md:text-sm uppercase italic tracking-widest shadow-lg"><Printer size={20} /> IMPRIMIR</button>
+              <button onClick={handleDownloadPDF} className="flex-1 xl:flex-none bg-slate-800 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 border-2 border-orange-500 hover:bg-orange-500 transition-all text-xs md:text-sm uppercase italic tracking-widest shadow-lg shadow-orange-900/20"><Download size={20} /> PDF</button>
               <button onClick={handleEnviarMail} className="flex-1 xl:flex-none bg-blue-900/30 text-blue-400 px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-blue-600 hover:text-white transition-all text-xs md:text-sm uppercase italic tracking-widest shadow-lg shadow-blue-900/20"><Mail size={20} /> MAIL</button>
               <button onClick={handleSaveRutina} className="w-full xl:w-auto power-gradient text-white px-10 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-2xl uppercase italic tracking-widest hover:scale-105 transition-transform text-xs md:text-sm"><Save size={20} /> GUARDAR</button>
             </div>
           </header>
 
-          <div className="hidden print:flex items-center justify-between mb-8 border-b-4 border-black pb-4 px-6">
+          <div ref={routineRef} className="bg-slate-900 p-4 rounded-[3rem]">
+            <div className="hidden print:flex items-center justify-between mb-8 border-b-4 border-black pb-4 px-6">
             <div className="flex-1">
               <h1 className="text-4xl font-black uppercase leading-none italic tracking-tighter text-white print:text-black">{selectedCliente?.nombre}</h1>
               <div className="flex items-center gap-6 mt-2">
@@ -448,6 +472,7 @@ function App() {
                 </section>
               );
             })}
+          </div>
           </div>
         </main>
         {mostrarModalPlantillas && (
