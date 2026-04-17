@@ -71,6 +71,7 @@ app.post('/api/clientes', (req, res) => {
     res.json({ id: this.lastID });
   });
 });
+
 app.delete('/api/clientes/:id', (req, res) => db.run("DELETE FROM clientes WHERE id = ?", [req.params.id], () => res.json({ success: true })));
 app.get('/api/ejercicios', (req, res) => db.all("SELECT * FROM ejercicios ORDER BY grupo_muscular, nombre", (err, rows) => res.json(rows || [])));
 app.post('/api/ejercicios', (req, res) => db.run("INSERT INTO ejercicios (nombre, grupo_muscular) VALUES (?, ?)", [req.body.nombre, req.body.grupo_muscular], function() { res.json({ id: this.lastID }); }));
@@ -126,6 +127,11 @@ app.post('/api/rutinas/:id/enviar-mail', (req, res) => {
         return colors[dia - 1] || '#f3f4f6';
       };
 
+      const getGrupoColor = (grupo) => {
+        const colors = { 'PECHO': '#dc2626', 'ESPALDA': '#2563eb', 'ZONA MEDIA': '#eab308', 'TREN INFERIOR': '#059669', 'HOMBROS': '#9333ea', 'TRICEPS': '#f97316', 'BICEPS': '#0ea5e9' };
+        return colors[grupo.toUpperCase()] || '#1e293b';
+      };
+
       const dias = [...new Set(ejs.map(e => e.dia))].sort();
       let html = `
         <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 800px; margin: 0 auto; color: #000; background: #fff;">
@@ -155,9 +161,12 @@ app.post('/api/rutinas/:id/enviar-mail', (req, res) => {
 
         grupos.forEach(grupo => {
           const ejsG = ejsDia.filter(e => e.grupo_muscular === grupo);
+          const colorGrupo = getGrupoColor(grupo);
+          const textColorG = grupo.toUpperCase() === 'ZONA MEDIA' ? '#000' : '#fff';
+
           html += `
             <div style="border: 3px solid #000; margin-bottom: 20px; overflow: hidden;">
-              <div style="background: #1e293b; color: #fff; padding: 6px 15px; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;">${grupo}</div>
+              <div style="background: ${colorGrupo}; color: ${textColorG}; padding: 6px 15px; font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;">${grupo}</div>
               <table style="width: 100%; border-collapse: collapse; background: #fff;">
                 <thead>
                   <tr style="background: #f8fafc; border-bottom: 1px solid #000;">
@@ -211,6 +220,14 @@ app.post('/api/rutinas/:id/enviar-mail', (req, res) => {
       });
     });
   });
+});
+
+app.post('/api/shutdown', (req, res) => {
+  res.json({ success: true });
+  console.log('Apagando sistema...');
+  setTimeout(() => {
+    process.exit(0);
+  }, 1000);
 });
 
 app.listen(PORT, () => console.log(`Servidor API corriendo en http://localhost:${PORT}`));

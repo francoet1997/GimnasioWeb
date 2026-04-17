@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Search, Plus, User, ArrowLeft, Save, Trash2, Printer, FileText, Mail, Download } from 'lucide-react';
+import { Search, Plus, User, ArrowLeft, Save, Trash2, Printer, FileText, Download } from 'lucide-react';
 import type { Cliente, Ejercicio, Rutina, Plantilla, EjercicioRutina, View } from './types';
 import { Sidebar } from './components/Sidebar';
 import { MobileHeader } from './components/MobileHeader';
-import html2pdf from 'html2pdf.js';
 
 const API_URL = `http://${window.location.hostname}:3001/api`;
 
@@ -40,6 +39,13 @@ function App() {
     fetchClientes();
     fetchEjerciciosBase();
     fetchPlantillas();
+
+    const handleWindowClose = () => {
+      navigator.sendBeacon(`${API_URL}/shutdown`);
+    };
+
+    window.addEventListener('beforeunload', handleWindowClose);
+    return () => window.removeEventListener('beforeunload', handleWindowClose);
   }, []);
 
   useEffect(() => {
@@ -138,38 +144,6 @@ function App() {
     }
   };
 
-  const handleEnviarMail = async () => {
-    if (!selectedRutina || !selectedCliente?.email) {
-      alert('El cliente debe tener un email registrado.');
-      return;
-    }
-    try {
-      await axios.post(`${API_URL}/rutinas/${selectedRutina.id}/enviar-mail`);
-      alert('Mail enviado!');
-    } catch (e) {
-      alert('Error al enviar mail. Revisa las credenciales en el backend.');
-    }
-  };
-
-  const handleDownloadPDF = () => {
-    if (!routineRef.current) return;
-    
-    const element = routineRef.current;
-    const opt = {
-      margin:       10,
-      filename:     `Rutina_${selectedCliente?.nombre || 'Alumno'}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { 
-        scale: 2, 
-        useCORS: true,
-        backgroundColor: '#0f172a'
-      },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    html2pdf().set(opt).from(element).save();
-  };
-
   // --- HANDLERS EJERCICIOS ---
   const handleAddEjercicio = (dia: number) => {
     const nuevo: EjercicioRutina = { 
@@ -242,6 +216,24 @@ function App() {
   const getDayColor = (dia: number) => {
     const colors = ['bg-[#f6c343]', 'bg-[#fef08a]', 'bg-[#bbf7d0]', 'bg-[#38bdf8]', 'bg-[#71717a] text-white', 'bg-[#c084fc]'];
     return colors[dia - 1] || 'bg-gray-100';
+  };
+
+  const getGrupoColor = (grupo: string) => {
+    const colors: Record<string, string> = {
+      'PECHO': '#dc2626',
+      'ESPALDA': '#2563eb',
+      'ZONA MEDIA': '#eab308',
+      'TREN INFERIOR': '#059669',
+      'HOMBROS': '#9333ea',
+      'TRICEPS': '#f97316',
+      'BICEPS': '#0ea5e9',
+    };
+    return colors[grupo.toUpperCase()] || '#1e293b';
+  };
+
+  const getGrupoClass = (grupo: string) => {
+    const name = grupo.toUpperCase().replace(/\s+/g, '-');
+    return `grupo-${name.toLowerCase()}`;
   };
 
   // --- RENDERIZADO DE VISTAS ---
@@ -324,7 +316,7 @@ function App() {
           <div className="lg:col-span-2 power-card p-6 md:p-10 rounded-[3rem] shadow-xl max-h-[75vh] overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 border border-white/10">
             {[...ejerciciosBase].sort((a,b)=>a.grupo_muscular.localeCompare(b.grupo_muscular)).map(eb => (
               <div key={eb.id} className="p-5 bg-slate-800/50 rounded-2xl flex items-center gap-4 border border-white/5 hover:bg-slate-800 transition-colors">
-                <span className="text-[10px] font-black power-gradient text-white px-3 py-1 rounded-lg uppercase tracking-wider">{eb.grupo_muscular}</span>
+                <span className="text-[10px] font-black text-white px-3 py-1 rounded-lg uppercase tracking-wider" style={{ backgroundColor: getGrupoColor(eb.grupo_muscular), color: eb.grupo_muscular === 'ZONA MEDIA' ? '#000' : '#fff' }}>{eb.grupo_muscular}</span>
                 <span className="font-black text-white text-sm uppercase italic">{eb.nombre}</span>
               </div>
             ))}
@@ -392,55 +384,80 @@ function App() {
             </div>
             <div className="flex flex-wrap gap-3 w-full xl:w-auto">
               <button onClick={() => setMostrarModalPlantillas(true)} className="flex-1 xl:flex-none bg-slate-800 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 text-xs md:text-sm uppercase italic tracking-widest hover:bg-black transition-all shadow-lg"><FileText size={20} /> STOCK</button>
-              <button onClick={() => window.print()} className="flex-1 xl:flex-none bg-slate-800 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 border-2 border-slate-700 hover:bg-white hover:text-black transition-all text-xs md:text-sm uppercase italic tracking-widest shadow-lg"><Printer size={20} /> IMPRIMIR</button>
-              <button onClick={handleDownloadPDF} className="flex-1 xl:flex-none bg-slate-800 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 border-2 border-orange-500 hover:bg-orange-500 transition-all text-xs md:text-sm uppercase italic tracking-widest shadow-lg shadow-orange-900/20"><Download size={20} /> PDF</button>
-              <button onClick={handleEnviarMail} className="flex-1 xl:flex-none bg-blue-900/30 text-blue-400 px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-blue-600 hover:text-white transition-all text-xs md:text-sm uppercase italic tracking-widest shadow-lg shadow-blue-900/20"><Mail size={20} /> MAIL</button>
-              <button onClick={handleSaveRutina} className="w-full xl:w-auto power-gradient text-white px-10 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-2xl uppercase italic tracking-widest hover:scale-105 transition-transform text-xs md:text-sm"><Save size={20} /> GUARDAR</button>
+              <button onClick={() => window.print()} className="flex-1 xl:flex-none bg-slate-800 text-white px-6 py-4 rounded-2xl font-black flex items-center justify-center gap-3 border-2 border-slate-700 hover:bg-white hover:text-black transition-all text-xs md:text-sm uppercase italic tracking-widest shadow-lg"><Download size={20} /> PDF</button>
+              <button onClick={handleSaveRutina} className="flex-1 xl:flex-none power-gradient text-white px-10 py-4 rounded-2xl font-black flex items-center justify-center gap-3 shadow-2xl uppercase italic tracking-widest hover:scale-105 transition-transform text-xs md:text-sm"><Save size={20} /> GUARDAR</button>
             </div>
           </header>
 
-          <div ref={routineRef} className="bg-slate-900 p-4 rounded-[3rem]">
-            <div className="hidden print:flex items-center justify-between mb-8 border-b-4 border-black pb-4 px-6">
+          <style>{`
+            @media print {
+              @page { margin: 5mm; }
+              * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              .print-compact-table td, .print-compact-table th { padding: 4px 6px !important; font-size: 11px !important; }
+              .print-compact-table th { font-size: 9px !important; }
+              .print-no-break { break-inside: avoid !important; }
+              h1, h2, h3 { margin-bottom: 2px !important; }
+              .grupo-pecho { background-color: #dc2626 !important; color: white !important; }
+              .grupo-espalda { background-color: #2563eb !important; color: white !important; }
+              .grupo-zona-media { background-color: #eab308 !important; color: black !important; }
+              .grupo-tren-inferior { background-color: #059669 !important; color: white !important; }
+              .grupo-hombros { background-color: #9333ea !important; color: white !important; }
+              .grupo-triceps { background-color: #f97316 !important; color: white !important; }
+              .grupo-biceps { background-color: #0ea5e9 !important; color: white !important; }
+              .muscle-label { 
+                display: block !important; 
+                padding: 4px 10px !important; 
+                text-transform: uppercase !important; 
+                font-weight: 900 !important; 
+                border-bottom: 2px solid black !important;
+              }
+            }
+          `}</style>
+
+          <div ref={routineRef} className="bg-slate-900 p-4 rounded-[3rem] print:bg-white print:p-0">
+            <div className="hidden print:flex items-center justify-between mb-4 border-b-2 border-black pb-1 px-2">
             <div className="flex-1">
-              <h1 className="text-4xl font-black uppercase leading-none italic tracking-tighter text-white print:text-black">{selectedCliente?.nombre}</h1>
-              <div className="flex items-center gap-6 mt-2">
-                <span className="text-lg font-black bg-black text-white px-4 py-1 uppercase italic print:bg-white print:text-black print:border-2 print:border-black">{selectedRutina?.nombre_rutina}</span>
-                <span className="text-xs font-black uppercase tracking-widest text-white print:text-black">FECHA: {new Date().toLocaleDateString()}</span>
+              <h1 className="text-xl font-black uppercase leading-none italic tracking-tighter text-white print:text-black">{selectedCliente?.nombre}</h1>
+              <div className="flex items-center gap-4 mt-1">
+                <span className="text-xs font-black bg-black text-white px-2 py-0.5 uppercase italic print:bg-black print:text-white">{selectedRutina?.nombre_rutina}</span>
+                <span className="text-[8px] font-black uppercase tracking-widest text-white print:text-black">FECHA: {new Date().toLocaleDateString()}</span>
               </div>
             </div>
-            <img src="/power.png" alt="Power Logo" className="w-24 h-24 object-contain ml-8" />
+            <img src="/power.png" alt="Power Logo" className="w-12 h-12 object-contain ml-2" />
           </div>
 
-          <div className="max-w-7xl mx-auto space-y-12 print:space-y-4">
+          <div className="max-w-7xl mx-auto space-y-6 print:space-y-2">
             {dias.map(dia => {
               const ejsDia = ejerciciosRutina.filter(e => e.dia === dia);
               const maxDiaConEjercicios = ejerciciosRutina.length > 0 ? Math.max(...ejerciciosRutina.map(e => e.dia)) : 0;
               if (ejsDia.length === 0 && dia > 3 && dia > maxDiaConEjercicios + 1) return null;
 
               return (
-                <section key={dia} className="print:break-inside-avoid">
-                  <div className="flex items-center gap-5 mb-6 print:mb-2 print:px-6">
-                    <div className={`w-12 h-12 md:w-14 md:h-14 flex items-center justify-center text-2xl md:text-3xl font-black border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] print:w-8 print:h-8 print:text-base print:border-2 print:shadow-none ${getDayColor(dia)}`}>{dia}</div>
-                    <h3 className="text-2xl md:text-3xl font-black uppercase italic tracking-tighter print:text-lg text-white print:text-black">DÍA {dia}</h3>
-                    <div className="flex-1 h-1.5 bg-slate-800 rounded-full print:h-0.5 print:bg-black"></div>
+                <section key={dia} className="print:break-inside-avoid print:no-break">
+                  <div className="flex items-center gap-3 mb-4 print:mb-1 print:px-2">
+                    <div className={`w-10 h-10 md:w-14 md:h-14 flex items-center justify-center text-xl md:text-3xl font-black border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] print:w-6 print:h-6 print:text-xs print:border-2 print:shadow-none ${getDayColor(dia)}`}>{dia}</div>
+                    <h3 className="text-xl md:text-3xl font-black uppercase italic tracking-tighter print:text-sm text-white print:text-black">DÍA {dia}</h3>
+                    <div className="flex-1 h-1 bg-slate-800 rounded-full print:h-0.5 print:bg-black"></div>
                     <button onClick={() => handleAddEjercicio(dia)} className="power-gradient text-white text-[10px] md:text-xs px-5 md:px-6 py-2.5 md:py-3 rounded-full font-black uppercase italic tracking-widest shadow-lg print:hidden"><Plus size={16} /> AÑADIR</button>
                   </div>
-                  <div className="space-y-6 print:space-y-2 print:px-6">
+                  <div className="space-y-4 print:space-y-1 print:px-2">
                     {[...new Set(ejsDia.map(e => ejerciciosBase.find(eb => eb.id === e.ejercicio_id)?.grupo_muscular || 'OTROS'))].map(g => {
                       const ejsG = ejsDia.filter(e => (ejerciciosBase.find(eb => eb.id === e.ejercicio_id)?.grupo_muscular || 'OTROS') === g);
+                      const colorHex = getGrupoColor(g);
+                      const groupClass = getGrupoClass(g);
                       return (
-                        <div key={g} className="power-card rounded-[2rem] shadow-xl border border-white/10 overflow-hidden print:border-4 print:border-black print:rounded-none print:shadow-none">
-                          <div className="bg-slate-900 text-white px-6 md:px-8 py-2.5 text-[10px] md:text-[11px] font-black uppercase tracking-[0.4em] italic print:bg-black print:text-white print:px-4 print:py-1">{g}</div>
+                        <div key={g} className="power-card rounded-[2rem] shadow-xl border border-white/10 overflow-hidden print:border-2 print:border-black print:rounded-none print:shadow-none print:no-break">
+                          <div className={`px-6 md:px-8 py-1.5 text-[10px] md:text-[11px] font-black uppercase tracking-[0.4em] italic print:px-2 print:py-0.5 muscle-label ${groupClass}`} style={{ backgroundColor: colorHex, color: g.toUpperCase() === 'ZONA MEDIA' ? '#000' : '#fff' }}>{g}</div>
                           <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse min-w-[700px] md:min-w-0">
+                            <table className="w-full text-left border-collapse min-w-[700px] md:min-w-0 print:compact-table">
                               <thead className="bg-slate-800/50 text-[10px] font-black uppercase text-slate-500 border-b border-white/5 print:bg-slate-100 print:text-black print:border-black">
                                 <tr>
-                                  <th className="px-6 md:px-8 py-4 w-1/3 print:px-3 print:py-1">MOVIMIENTO</th>
-                                  <th className="px-2 py-4 text-center w-16 print:px-1">S</th>
-                                  <th className="px-2 py-4 text-center w-16 print:px-1">R</th>
-                                  <th className="px-6 md:px-8 py-4 w-28 print:px-3">PESO</th>
-                                  <th className="px-6 md:px-8 py-4 print:px-3">NOTAS</th>
-                                  <th className="px-4 py-4 w-12 print:hidden"></th>
+                                  <th className="px-6 md:px-8 py-2 w-1/3 print:px-2 print:py-0.5">MOVIMIENTO</th>
+                                  <th className="px-2 py-2 text-center w-16 print:px-1">S</th>
+                                  <th className="px-2 py-2 text-center w-16 print:px-1">R</th>
+                                  <th className="px-6 md:px-8 py-2 w-28 print:px-2">PESO</th>
+                                  <th className="px-6 md:px-8 py-2 print:px-2">NOTAS</th>
+                                  <th className="px-4 py-2 w-12 print:hidden"></th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-white/5 print:divide-y print:divide-black">
@@ -448,17 +465,38 @@ function App() {
                                   const baseInfo = ejerciciosBase.find(eb => eb.id === ej.ejercicio_id);
                                   return (
                                     <tr key={idx} className="hover:bg-white/5 transition-colors print:divide-x print:divide-black">
-                                      <td className="px-6 md:px-8 py-5 print:px-3 print:py-2">
-                                        <select className="w-full bg-transparent border-none focus:ring-0 font-black text-white print:text-black uppercase appearance-none print:hidden cursor-pointer text-sm md:text-base italic leading-tight" value={ej.ejercicio_id} onChange={e => updateEjercicio(ej, 'ejercicio_id', parseInt(e.target.value))}>
-                                          {[...ejerciciosBase].sort((a,b)=>a.grupo_muscular.localeCompare(b.grupo_muscular)).map(eb => <option key={eb.id} value={eb.id} className="bg-slate-900">{eb.grupo_muscular}: {eb.nombre}</option>)}
-                                        </select>
-                                        <span className="hidden print:block text-base font-black uppercase italic leading-none">{baseInfo?.nombre}</span>
+                                      <td className="px-6 md:px-8 py-3 print:px-2 print:py-0.5">
+                                        <div className="flex flex-col gap-1 print:hidden">
+                                          <select 
+                                            className="w-full bg-slate-800/50 border-none focus:ring-0 font-black text-orange-500 uppercase text-[10px] italic leading-tight rounded-lg px-2 py-1 cursor-pointer"
+                                            value={baseInfo?.grupo_muscular || 'PECHO'}
+                                            onChange={e => {
+                                              const nuevoGrupo = e.target.value;
+                                              const primerEj = ejerciciosBase.find(eb => eb.grupo_muscular === nuevoGrupo);
+                                              if (primerEj) updateEjercicio(ej, 'ejercicio_id', primerEj.id);
+                                            }}
+                                          >
+                                            {['PECHO', 'ESPALDA', 'ZONA MEDIA', 'TREN INFERIOR', 'HOMBROS', 'TRICEPS', 'BICEPS'].map(g => (
+                                              <option key={g} value={g} className="bg-slate-900">{g}</option>
+                                            ))}
+                                          </select>
+                                          <select 
+                                            className="w-full bg-transparent border-none focus:ring-0 font-black text-white uppercase cursor-pointer text-xs md:text-sm italic leading-tight" 
+                                            value={ej.ejercicio_id} 
+                                            onChange={e => updateEjercicio(ej, 'ejercicio_id', parseInt(e.target.value))}
+                                          >
+                                            {ejerciciosBase.filter(eb => eb.grupo_muscular === (baseInfo?.grupo_muscular || 'PECHO')).map(eb => (
+                                              <option key={eb.id} value={eb.id} className="bg-slate-900">{eb.nombre}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                        <span className="hidden print:block text-xs font-black uppercase italic leading-none">{baseInfo?.nombre}</span>
                                       </td>
-                                      <td className="px-2 py-5 text-center print:px-1 print:py-2"><input className="w-full text-center border-none focus:ring-0 font-black print:hidden text-lg bg-transparent text-white" value={ej.series} onChange={e => updateEjercicio(ej, 'series', e.target.value)} /><span className="hidden print:block text-xl font-black">{ej.series}</span></td>
-                                      <td className="px-2 py-5 text-center print:px-1 print:py-2"><input className="w-full text-center border-none focus:ring-0 font-black print:hidden text-lg bg-transparent text-white" value={ej.repeticiones} onChange={e => updateEjercicio(ej, 'repeticiones', e.target.value)} /><span className="hidden print:block text-xl font-black">{ej.repeticiones}</span></td>
-                                      <td className="px-6 md:px-8 py-5 print:px-3 print:py-2"><input className="w-full border-none focus:ring-0 font-black text-orange-500 italic print:hidden text-lg bg-transparent placeholder:text-slate-700 text-white" value={ej.peso} placeholder="0 KG" onChange={e => updateEjercicio(ej, 'peso', e.target.value)} /><span className="hidden print:block text-xl font-black italic">{ej.peso || '____'}</span></td>
-                                      <td className="px-6 md:px-8 py-5 print:px-3 print:py-2"><input className="w-full border-none focus:ring-0 text-[11px] font-bold text-slate-500 italic print:hidden bg-transparent placeholder:text-slate-700 text-white" value={ej.notas} placeholder="Observaciones..." onChange={e => updateEjercicio(ej, 'notas', e.target.value)} /><span className="hidden print:block text-[10px] font-bold uppercase italic text-slate-700">{ej.notas}</span></td>
-                                      <td className="px-4 py-5 text-center print:hidden"><button onClick={()=>setEjerciciosRutina(ejerciciosRutina.filter(x=>x!==ej))} className="text-slate-600 hover:text-red-500 transition-colors"><Trash2 size={24} /></button></td>
+                                      <td className="px-2 py-3 text-center print:px-1 print:py-0.5"><input className="w-full text-center border-none focus:ring-0 font-black print:hidden text-base bg-transparent text-white" value={ej.series} onChange={e => updateEjercicio(ej, 'series', e.target.value)} /><span className="hidden print:block text-xs font-black">{ej.series}</span></td>
+                                      <td className="px-2 py-3 text-center print:px-1 print:py-0.5"><input className="w-full text-center border-none focus:ring-0 font-black print:hidden text-base bg-transparent text-white" value={ej.repeticiones} onChange={e => updateEjercicio(ej, 'repeticiones', e.target.value)} /><span className="hidden print:block text-xs font-black">{ej.repeticiones}</span></td>
+                                      <td className="px-6 md:px-8 py-3 print:px-2 print:py-0.5"><input className="w-full border-none focus:ring-0 font-black text-orange-500 italic print:hidden text-base bg-transparent placeholder:text-slate-700 text-white" value={ej.peso} placeholder="0 KG" onChange={e => updateEjercicio(ej, 'peso', e.target.value)} /><span className="hidden print:block text-xs font-black italic">{ej.peso || '____'}</span></td>
+                                      <td className="px-6 md:px-8 py-3 print:px-2 print:py-0.5"><input className="w-full border-none focus:ring-0 text-[10px] font-bold text-slate-500 italic print:hidden bg-transparent placeholder:text-slate-700 text-white" value={ej.notas} placeholder="Observaciones..." onChange={e => updateEjercicio(ej, 'notas', e.target.value)} /><span className="hidden print:block text-[8px] font-bold uppercase italic text-slate-700">{ej.notas}</span></td>
+                                      <td className="px-4 py-3 text-center print:hidden"><button onClick={()=>setEjerciciosRutina(ejerciciosRutina.filter(x=>x!==ej))} className="text-slate-600 hover:text-red-500 transition-colors"><Trash2 size={24} /></button></td>
                                     </tr>
                                   );
                                 })}
@@ -594,9 +632,30 @@ function App() {
                           {ejsD.map((ej, idx) => (
                             <tr key={idx} className="hover:bg-white/5 transition-all">
                               <td className="px-8 py-6">
-                                <select className="w-full bg-transparent border-none focus:ring-0 font-black text-white uppercase appearance-none cursor-pointer text-sm md:text-base italic leading-tight" value={ej.ejercicio_id} onChange={e => updateEjercicioPlantilla(ej, 'ejercicio_id', parseInt(e.target.value))}>
-                                  {[...ejerciciosBase].sort((a,b)=>a.grupo_muscular.localeCompare(b.grupo_muscular)).map(eb => <option key={eb.id} value={eb.id} className="bg-slate-900">{eb.grupo_muscular}: {eb.nombre}</option>)}
-                                </select>
+                                <div className="flex flex-col gap-2">
+                                  <select 
+                                    className="w-full bg-slate-800 border-none focus:ring-2 focus:ring-orange-500 font-black text-orange-500 uppercase text-[10px] italic leading-tight rounded-xl px-4 py-2 cursor-pointer"
+                                    value={ejerciciosBase.find(eb => eb.id === ej.ejercicio_id)?.grupo_muscular || 'PECHO'}
+                                    onChange={e => {
+                                      const nuevoGrupo = e.target.value;
+                                      const primerEj = ejerciciosBase.find(eb => eb.grupo_muscular === nuevoGrupo);
+                                      if (primerEj) updateEjercicioPlantilla(ej, 'ejercicio_id', primerEj.id);
+                                    }}
+                                  >
+                                    {['PECHO', 'ESPALDA', 'ZONA MEDIA', 'TREN INFERIOR', 'HOMBROS', 'TRICEPS', 'BICEPS'].map(g => (
+                                      <option key={g} value={g} className="bg-slate-900">{g}</option>
+                                    ))}
+                                  </select>
+                                  <select 
+                                    className="w-full bg-transparent border-none focus:ring-0 font-black text-white uppercase cursor-pointer text-sm md:text-base italic leading-tight" 
+                                    value={ej.ejercicio_id} 
+                                    onChange={e => updateEjercicioPlantilla(ej, 'ejercicio_id', parseInt(e.target.value))}
+                                  >
+                                    {ejerciciosBase.filter(eb => eb.id === ej.ejercicio_id || eb.grupo_muscular === (ejerciciosBase.find(x => x.id === ej.ejercicio_id)?.grupo_muscular || 'PECHO')).map(eb => (
+                                      <option key={eb.id} value={eb.id} className="bg-slate-900">{eb.nombre}</option>
+                                    ))}
+                                  </select>
+                                </div>
                               </td>
                               <td className="px-4 py-6"><input className="w-full text-center border-2 border-slate-800 bg-slate-900 text-white rounded-2xl font-black py-3 text-sm md:text-base shadow-sm focus:border-orange-500 transition-all" value={ej.series} onChange={e => updateEjercicioPlantilla(ej, 'series', e.target.value)} /></td>
                               <td className="px-4 py-6"><input className="w-full text-center border-2 border-slate-800 bg-slate-900 text-white rounded-2xl font-black py-3 text-sm md:text-base shadow-sm focus:border-orange-500 transition-all" value={ej.repeticiones} onChange={e => updateEjercicioPlantilla(ej, 'repeticiones', e.target.value)} /></td>
@@ -616,16 +675,37 @@ function App() {
     );
   };
 
-  // --- RENDER PRINCIPAL ---
-  switch (view) {
-    case 'list': return renderListView();
-    case 'config': return renderConfigView();
-    case 'cliente': return renderClienteView();
-    case 'editor': return renderEditorView();
-    case 'plantillas': return renderPlantillasView();
-    case 'plantillaEditor': return renderPlantillaEditorView();
-    default: return renderListView();
-  }
+  return (
+    <>
+      {(() => {
+        switch (view) {
+          case 'list': return renderListView();
+          case 'config': return renderConfigView();
+          case 'cliente': return renderClienteView();
+          case 'editor': return renderEditorView();
+          case 'plantillas': return renderPlantillasView();
+          case 'plantillaEditor': return renderPlantillaEditorView();
+          default: return renderListView();
+        }
+      })()}
+
+      {/* Firma del Jefe Franco */}
+      <div className="fixed bottom-6 right-6 z-[100] max-w-[400px] w-full bg-slate-900/90 backdrop-blur-xl p-6 rounded-[2rem] border-2 border-orange-500/20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] print:hidden pointer-events-auto">
+        <p className="text-xs md:text-sm text-slate-300 font-black leading-snug uppercase italic tracking-tight">
+          Esta genialidad de herramienta fue completamente desarrollada por su amo y señor jefe <span className="text-orange-500 underline decoration-2 underline-offset-4">Franco</span>. <br/>
+          <span className="text-[10px] text-orange-600/80 mt-1 block">Dale a laburar perro suelto.</span>
+        </p>
+        <a 
+          href="https://i.pinimg.com/1200x/73/7d/e6/737de63b49d82e02bb59a5b7d82499b6.jpg" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="inline-block mt-4 text-xs text-red-600 hover:text-red-400 transition-all font-black uppercase tracking-[0.2em] border-2 border-red-900/50 px-4 py-2 rounded-xl hover:bg-red-950/30"
+        >
+          no toques en este botón
+        </a>
+      </div>
+    </>
+  );
 }
 
 export default App;

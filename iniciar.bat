@@ -1,7 +1,8 @@
 @echo off
+title GIMNASIOWEB - INICIANDO SISTEMA
 setlocal enabledelayedexpansion
 
-:: Obtener la IP local (Windows)
+:: Obtener la IP local (Windows) para acceso desde el celular
 for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /i "IPv4" ^| findstr /v "127.0.0.1"') do (
     set IP_LOCAL=%%i
     set IP_LOCAL=!IP_LOCAL: ^=!
@@ -9,38 +10,54 @@ for /f "tokens=2 delims=:" %%i in ('ipconfig ^| findstr /i "IPv4" ^| findstr /v 
 )
 :found_ip
 
-echo ------------------------------------------------
-echo    INICIANDO GIMNASIOWEB (WINDOWS)
-echo ------------------------------------------------
-echo Acceso desde esta computadora: http://localhost:5173
-if defined IP_LOCAL (
-    echo Acceso desde celulares/otros: http://%IP_LOCAL%:5173
-) else (
-    echo No se pudo detectar la IP local para acceso externo.
-)
-echo ------------------------------------------------
-
-:: Iniciar Backend en segundo plano
+cls
+echo ==========================================================
+echo           GIMNASIO WEB PROFESSIONAL 
+echo ==========================================================
+echo.
+echo  [1/3] Iniciando Servidor de Datos (Backend)...
 cd backend
-start /B node index.js
+start /B node index.js > nul 2>&1
 
-:: Iniciar Frontend con acceso externo
+echo  [2/3] Iniciando Interfaz Visual (Frontend)...
 cd ../frontend
-start /B npx vite --host --port 5173
+start /B npx vite --host --port 5173 > nul 2>&1
 
-:: Esperar un momento y abrir el navegador
-timeout /t 5 /nobreak > nul
-start http://localhost:5173
+echo  [3/3] Configurando ventana de aplicacion...
+echo.
+echo ----------------------------------------------------------
+echo  ACCESO LOCAL: http://localhost:5173
+if defined IP_LOCAL (
+    echo  ACCESO CELULAR: http://%IP_LOCAL%:5173
+)
+echo ----------------------------------------------------------
+echo.
+echo  ESPERANDO A QUE EL SISTEMA ESTE LISTO...
+timeout /t 6 /nobreak > nul
 
-cd ..
+:: Intentar abrir en Modo App de Chrome
+set URL=http://localhost:5173
+start chrome --app=%URL% 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    :: Si falla Chrome, intentar con Edge (que es de sistema)
+    start msedge --app=%URL% 2>nul
+    if %ERRORLEVEL% NEQ 0 (
+        :: Si todo falla, abrir en el navegador por defecto normal
+        start %URL%
+    )
+)
 
-echo Presiona [Enter] para apagar el sistema...
+echo.
+echo  SISTEMA ACTIVO. 
+echo  NO CIERRES ESTA VENTANA MIENTRAS USES EL PROGRAMA.
+echo.
+echo  Presiona [ENTER] para APAGAR y SALIR.
+echo.
 pause > nul
 
-:: En Windows con start /B, cerrar la consola principal suele cerrar los procesos hijos, 
-:: pero para ser limpios, podriamos intentar matarlos si supieramos los PIDs. 
-:: Sin embargo, taskkill /F /IM node.exe podria matar otros procesos de node.
-
-echo Apagando el sistema...
-taskkill /F /IM node.exe /T
-echo Sistema apagado.
+echo.
+echo  Apagando servicios...
+taskkill /F /IM node.exe /T > nul 2>&1
+echo  SISTEMA APAGADO CORRECTAMENTE.
+timeout /t 2 > nul
+exit
