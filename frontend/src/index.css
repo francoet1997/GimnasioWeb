@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --color-orange-50: #fefce8;
+  --color-orange-100: #fef9c3;
+  --color-orange-200: #fef08a;
+  --color-orange-300: #fde047;
+  --color-orange-400: #facc15;
+  --color-orange-500: #eab308;
+  --color-orange-600: #ca8a04;
+  --color-orange-700: #a16207;
+  --color-orange-800: #854d0e;
+  --color-orange-900: #713f12;
+  --color-orange-950: #422006;
+}
+
 :root {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
@@ -27,7 +41,7 @@ body {
 
 /* Custom Power Theme Utilities */
 .power-gradient {
-  background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+  background: linear-gradient(135deg, #ca8a04 0%, #eab308 100%);
 }
 
 .power-card {
@@ -51,30 +65,26 @@ body {
     color: black !important;
   }
 
-  /* 2. Forzar que TODO el texto sea negro */
+  /* 2. Forzar ajuste de color exacto para que salgan los fondos y colores */
   * {
-    color: black !important;
-    -webkit-print-color-adjust: economy !important;
-    print-color-adjust: economy !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* 3. Arreglar las filas de los ejercicios */
-  /* Como usas .power-card o fondos oscuros, en papel deben ser claros o transparentes */
-  .power-card, 
-  [class*="bg-"], 
-  div[style*="background-color"] {
-    background-color: transparent !important;
-    border-bottom: 1px solid #ddd !important; /* Añadimos una línea sutil para separar */
+  .power-card {
+    background-color: white !important;
+    border: 1px solid #000 !important;
     backdrop-filter: none !important;
   }
 
-  /* 4. Asegurar que los textos específicos se vean */
-  h1, h2, h3, h4, span, p, div {
-    color: black !important;
+  /* 4. Asegurar que los muscle-labels (fondo de color) mantengan su color */
+  .muscle-label {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* 5. Ocultar lo que no sirve en papel */
-  /* Agregá acá las clases de los botones "AÑADIR", el header con "STOCK", "MAIL", etc. */
   button, 
   .btn, 
   nav, 

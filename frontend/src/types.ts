@@ -35,7 +35,7 @@ export interface EjercicioRutina {
   orden: number;
   series: string;
   repeticiones: string;
-  peso: string;
+  rir: string;
   notas: string;
 }
 

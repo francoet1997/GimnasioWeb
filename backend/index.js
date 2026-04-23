@@ -33,11 +33,22 @@ const transporter = nodemailer.createTransport({
 function initDb() {
   db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, genero TEXT, email TEXT, notas TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS grupos_musculares (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT UNIQUE NOT NULL)`);
     db.run(`CREATE TABLE IF NOT EXISTS ejercicios (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, grupo_muscular TEXT NOT NULL, UNIQUE(nombre, grupo_muscular))`);
     db.run(`CREATE TABLE IF NOT EXISTS rutinas (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente_id INTEGER, nombre_rutina TEXT, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP)`);
-    db.run(`CREATE TABLE IF NOT EXISTS ejercicios_rutina (id INTEGER PRIMARY KEY AUTOINCREMENT, rutina_id INTEGER, ejercicio_id INTEGER, dia INTEGER, orden INTEGER, series TEXT, repeticiones TEXT, peso TEXT, notas TEXT)`);
+    db.run(`CREATE TABLE IF NOT EXISTS ejercicios_rutina (id INTEGER PRIMARY KEY AUTOINCREMENT, rutina_id INTEGER, ejercicio_id INTEGER, dia INTEGER, orden INTEGER, series TEXT, repeticiones TEXT, rir TEXT, notas TEXT)`);
     db.run(`CREATE TABLE IF NOT EXISTS plantillas (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, genero TEXT, dias INTEGER, UNIQUE(nombre, genero, dias))`);
     db.run(`CREATE TABLE IF NOT EXISTS ejercicios_plantilla (id INTEGER PRIMARY KEY AUTOINCREMENT, plantilla_id INTEGER, ejercicio_id INTEGER, dia INTEGER, orden INTEGER, series TEXT, repeticiones TEXT)`);
+
+    // Insertar grupos iniciales
+    const gruposIniciales = ['PECHO', 'ESPALDA', 'ZONA MEDIA', 'TREN INFERIOR', 'HOMBROS', 'TRICEPS', 'BICEPS'];
+    const stmtGrupos = db.prepare("INSERT OR IGNORE INTO grupos_musculares (nombre) VALUES (?)");
+    gruposIniciales.forEach(g => stmtGrupos.run(g));
+    stmtGrupos.finalize();
+
+    db.all(`PRAGMA table_info(ejercicios_rutina)`, (err, rows) => {
+      if (rows && !rows.some(r => r.name === 'rir')) db.run(`ALTER TABLE ejercicios_rutina ADD COLUMN rir TEXT`);
+    });
 
     db.all(`PRAGMA table_info(clientes)`, (err, rows) => {
       if (rows && !rows.some(r => r.name === 'email')) db.run(`ALTER TABLE clientes ADD COLUMN email TEXT`);
@@ -73,8 +84,14 @@ app.post('/api/clientes', (req, res) => {
 });
 
 app.delete('/api/clientes/:id', (req, res) => db.run("DELETE FROM clientes WHERE id = ?", [req.params.id], () => res.json({ success: true })));
+
+app.get('/api/grupos', (req, res) => db.all("SELECT * FROM grupos_musculares ORDER BY nombre", (err, rows) => res.json(rows || [])));
+app.post('/api/grupos', (req, res) => db.run("INSERT OR IGNORE INTO grupos_musculares (nombre) VALUES (?)", [req.body.nombre.toUpperCase()], function() { res.json({ id: this.lastID }); }));
+app.delete('/api/grupos/:id', (req, res) => db.run("DELETE FROM grupos_musculares WHERE id = ?", [req.params.id], () => res.json({ success: true })));
+
 app.get('/api/ejercicios', (req, res) => db.all("SELECT * FROM ejercicios ORDER BY grupo_muscular, nombre", (err, rows) => res.json(rows || [])));
 app.post('/api/ejercicios', (req, res) => db.run("INSERT INTO ejercicios (nombre, grupo_muscular) VALUES (?, ?)", [req.body.nombre, req.body.grupo_muscular], function() { res.json({ id: this.lastID }); }));
+app.delete('/api/ejercicios/:id', (req, res) => db.run("DELETE FROM ejercicios WHERE id = ?", [req.params.id], () => res.json({ success: true })));
 app.get('/api/clientes/:id/rutinas', (req, res) => db.all("SELECT * FROM rutinas WHERE cliente_id = ? ORDER BY fecha_creacion DESC", [req.params.id], (err, rows) => res.json(rows || [])));
 app.post('/api/clientes/:id/rutinas', (req, res) => db.run("INSERT INTO rutinas (cliente_id, nombre_rutina) VALUES (?, ?)", [req.params.id, req.body.nombre_rutina], function() { res.json({ id: this.lastID }); }));
 app.delete('/api/rutinas/:id', (req, res) => {
@@ -87,8 +104,8 @@ app.get('/api/rutinas/:id/ejercicios', (req, res) => db.all("SELECT er.*, e.nomb
 app.put('/api/rutinas/:id/ejercicios', (req, res) => {
   db.serialize(() => {
     db.run("DELETE FROM ejercicios_rutina WHERE rutina_id = ?", [req.params.id]);
-    const stmt = db.prepare("INSERT INTO ejercicios_rutina (rutina_id, ejercicio_id, dia, orden, series, repeticiones, peso, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    req.body.ejercicios.forEach(ej => stmt.run([req.params.id, ej.ejercicio_id, ej.dia, ej.orden || 0, ej.series, ej.repeticiones, ej.peso, ej.notas]));
+    const stmt = db.prepare("INSERT INTO ejercicios_rutina (rutina_id, ejercicio_id, dia, orden, series, repeticiones, rir, notas) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    req.body.ejercicios.forEach(ej => stmt.run([req.params.id, ej.ejercicio_id, ej.dia, ej.orden || 0, ej.series, ej.repeticiones, ej.rir, ej.notas]));
     stmt.finalize(() => res.json({ success: true }));
   });
 });
@@ -128,7 +145,7 @@ app.post('/api/rutinas/:id/enviar-mail', (req, res) => {
       };
 
       const getGrupoColor = (grupo) => {
-        const colors = { 'PECHO': '#dc2626', 'ESPALDA': '#2563eb', 'ZONA MEDIA': '#eab308', 'TREN INFERIOR': '#059669', 'HOMBROS': '#9333ea', 'TRICEPS': '#f97316', 'BICEPS': '#0ea5e9' };
+        const colors = { 'PECHO': '#dc2626', 'ESPALDA': '#2563eb', 'ZONA MEDIA': '#eab308', 'TREN INFERIOR': '#059669', 'HOMBROS': '#9333ea', 'TRICEPS': '#ca8a04', 'BICEPS': '#0ea5e9' };
         return colors[grupo.toUpperCase()] || '#1e293b';
       };
 
@@ -173,7 +190,7 @@ app.post('/api/rutinas/:id/enviar-mail', (req, res) => {
                     <th style="padding: 10px 15px; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; width: 40%;">Movimiento</th>
                     <th style="padding: 10px 5px; text-align: center; font-size: 10px; font-weight: 900; text-transform: uppercase; width: 10%;">S</th>
                     <th style="padding: 10px 5px; text-align: center; font-size: 10px; font-weight: 900; text-transform: uppercase; width: 10%;">R</th>
-                    <th style="padding: 10px 15px; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; width: 15%;">Peso</th>
+                    <th style="padding: 10px 15px; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; width: 15%;">RIR</th>
                     <th style="padding: 10px 15px; text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase;">Notas</th>
                   </tr>
                 </thead>
@@ -186,7 +203,7 @@ app.post('/api/rutinas/:id/enviar-mail', (req, res) => {
                 <td style="padding: 12px 15px; font-size: 13px; font-weight: 900; text-transform: uppercase; color: #000;">${e.nombre_ejercicio}</td>
                 <td style="padding: 12px 5px; text-align: center; font-size: 16px; font-weight: 900; color: #000;">${e.series}</td>
                 <td style="padding: 12px 5px; text-align: center; font-size: 16px; font-weight: 900; color: #000;">${e.repeticiones}</td>
-                <td style="padding: 12px 15px; font-size: 14px; font-weight: 900; font-style: italic; color: #4f46e5;">${e.peso || '____'}</td>
+                <td style="padding: 12px 15px; font-size: 14px; font-weight: 900; font-style: italic; color: #4f46e5;">${e.rir || '____'}</td>
                 <td style="padding: 12px 15px; font-size: 10px; font-weight: 700; font-style: italic; color: #64748b; text-transform: uppercase;">${e.notas || ''}</td>
               </tr>
             `;

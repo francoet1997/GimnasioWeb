@@ -46,25 +46,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ view, setView, menuMobileOpen,
               <X size={24} />
             </button>
           </div>
-          <img src="/power.png" alt="Power Logo" className="w-32 h-32 object-contain mb-4 hidden lg:block drop-shadow-[0_0_15px_rgba(234,88,12,0.3)]" />
+          <img src="/power.png" alt="Power Logo" className="w-32 h-32 object-contain mb-4 hidden lg:block" />
           <h1 className="text-2xl font-black tracking-tighter text-center hidden lg:block uppercase italic leading-tight">Power <span className="text-orange-500 block">Rutinas</span></h1>
         </div>
         <nav className="flex-1 space-y-2">
           <button 
             onClick={() => setView('list')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold uppercase italic text-sm ${view === 'list' || view === 'cliente' || view === 'editor' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-slate-400 hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold uppercase italic text-sm ${view === 'list' || view === 'cliente' || view === 'editor' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40' : 'text-slate-400 hover:bg-white/5'}`}
           >
             <User size={20} /> Clientes
           </button>
           <button 
             onClick={() => setView('plantillas')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold uppercase italic text-sm ${view === 'plantillas' || view === 'plantillaEditor' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-slate-400 hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold uppercase italic text-sm ${view === 'plantillas' || view === 'plantillaEditor' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40' : 'text-slate-400 hover:bg-white/5'}`}
           >
             <FileText size={20} /> Stock Rutinas
           </button>
           <button 
             onClick={() => setView('config')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold uppercase italic text-sm ${view === 'config' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-slate-400 hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition font-bold uppercase italic text-sm ${view === 'config' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40' : 'text-slate-400 hover:bg-white/5'}`}
           >
             <Settings size={20} /> Ejercicios
           </button>
